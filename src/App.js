@@ -1,5 +1,5 @@
-import { useState } from "react"
-import {BrowserRouter as Router, Route, Routes} from 'react-router-dom'
+import { useState, useEffect } from "react"
+import { BrowserRouter as Router, Route, Routes } from 'react-router-dom'
 import Header from './components/Header'
 import Tasks from './components/Tasks'
 import AddTask from './components/AddTask'
@@ -8,44 +8,73 @@ import About from './components/About'
 
 function App() {
   const [showAddTask, setShowAddTask] = useState(false)
-  const [tasks, setTasks] = useState([
-    {
-        id: 1,
-        text: 'Food Shopping',
-        day: 'Feb 6th at 10:29',
-        reminder: true,
+  const [tasks, setTasks] = useState([])
+
+  useEffect(() => {
+    const getTasks = async () => {
+      const tasksFromServer = await fetchTasks()
+      setTasks(tasksFromServer)
+    }
+
+    getTasks()
+  }, [])
+
+  //Fetch Task from Json server
+  const fetchTasks = async () => {
+    const res = await fetch("http://localhost:5000/tasks")
+    const data = await res.json()
+
+    return data
+  }
+
+  const fetchTask = async (id) => {
+    const res = await fetch(`http://localhost:5000/tasks/${id}`)
+    const data = await res.json()
+
+    return data
+  }
+
+  //add task
+  const addTask = async (task) => {
+    const res = await fetch('http://localhost:5000/tasks',{
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify(task),
+    })
+
+    const data = await res.json()
+    setTasks([...tasks, data])
+  }
+
+  //delted task
+  const deleteTask = async (id) => {
+    await fetch(`http://localhost:5000/tasks/${id}`, {
+      method: 'DELETE'
+    })
+
+    setTasks(tasks.filter((tasks) => tasks.id !== id))
+  }
+
+  //toggle reminder
+  const toggleReminder = async (id) => {
+    const taskToToggle = await fetchTask(id)
+    const updTask = {...taskToToggle,
+    reminder: !taskToToggle.reminder}
+
+    const res = await fetch(`http://localhost:5000/tasks/${id}`,{
+    method:'PUT',
+    headers: {
+      'content-type': 'application/json',
     },
-    {
-        id: 2,
-        text: 'Meeting',
-        day: 'Feb 6th at 10:29',
-        reminder: true,
-    },
-    {
-        id: 3,
-        text: 'Dating',
-        day: 'Feb 6th at 10:29',
-        reminder: true,
-    },
+    body: JSON.stringify(updTask)  
+    })
 
-])
+    const data = await res.json()
 
-//add task
-const addTask = (task) =>{
-  const id = Math.floor(Math.random()*10000) + 1
-  const newTask = {id, ...task}
-  setTasks([...tasks, newTask])
-}
-
-//delted task
-const deleteTask = (id) =>{
-      setTasks(tasks.filter((tasks) => tasks.id !==id))
-}
-
-//toggle reminder
-const toggleReminder = (id) => {
-  setTasks(tasks.map((tasks) => tasks.id === id ? {...tasks, reminder: !tasks.reminder} : tasks))
-}
+    setTasks(tasks.map((task) => task.id === id ? { ...task, reminder: data.reminder } : task))
+  }
 
   return (
     <Router>
